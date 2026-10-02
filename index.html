@@ -1,13 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>PONG</title>
+<title>PONG — Selber zocken</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=Bebas+Neue&display=swap');
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   body {
     background: #050508;
     display: flex;
@@ -16,14 +14,13 @@
     height: 100vh;
     overflow: hidden;
     font-family: 'DM Mono', monospace;
+    color: #fff;
   }
-
   #wrap {
     position: relative;
     width: 900px;
     height: 580px;
   }
-
   #wrap::before {
     content: '';
     position: absolute;
@@ -35,35 +32,86 @@
     pointer-events: none;
     z-index: 0;
   }
-
-  canvas { position: relative; z-index: 1; display: block; }
-
+  canvas { position: relative; z-index: 1; display: block; border-radius: 4px; }
   #scores {
     position: absolute; top: 28px; left: 0; right: 0;
     display: flex; justify-content: center; align-items: center;
     gap: 64px; z-index: 2; pointer-events: none;
   }
-
   .score-val {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 72px; line-height: 1; letter-spacing: 2px;
     transition: transform 0.1s ease, filter 0.1s ease;
   }
   .score-val.flash { transform: scale(1.18); filter: brightness(2.5); }
-
   #score-l { color: #00f5ff; text-shadow: 0 0 20px #00f5ff, 0 0 60px rgba(0,245,255,0.4); }
   #score-r { color: #ff3cac; text-shadow: 0 0 20px #ff3cac, 0 0 60px rgba(255,60,172,0.4); }
-
   .score-divider {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 40px; color: rgba(255,255,255,0.12); margin-top: 10px;
   }
-
   #speed-label {
     position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
     font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
     color: rgba(255,255,255,0.18); z-index: 2;
   }
+  /* ── UI Buttons ── */
+  #ui {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  button {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    backdrop-filter: blur(6px);
+  }
+  button:hover {
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(255,255,255,0.35);
+    transform: translateY(-1px);
+  }
+  button.active {
+    background: rgba(0,245,255,0.18);
+    border-color: #00f5ff;
+    color: #00f5ff;
+    box-shadow: 0 0 18px rgba(0,245,255,0.25);
+  }
+  #mode-label {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    z-index: 20;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+  }
+  #controls-hint {
+    position: absolute;
+    bottom: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.25);
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #controls-hint.visible { opacity: 1; }
 
   /* ── Speech bubbles ── */
   .bubble {
@@ -75,11 +123,9 @@
     align-items: center;
     animation: bubblePop 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards;
   }
-
   .bubble.fade-out {
     animation: bubbleFade 0.4s ease forwards;
   }
-
   .bubble-inner {
     background: rgba(255,255,255,0.96);
     border-radius: 18px;
@@ -89,8 +135,6 @@
     box-shadow: 0 4px 24px rgba(0,0,0,0.5);
     position: relative;
   }
-
-  /* Triangle tail pointing down */
   .bubble-inner::after {
     content: '';
     position: absolute;
@@ -100,8 +144,6 @@
     border-right: 9px solid transparent;
     border-top: 11px solid rgba(255,255,255,0.96);
   }
-
-  /* Left paddle bubble: tail points right */
   .bubble.left .bubble-inner::after {
     bottom: auto; left: auto;
     top: 50%; right: -10px;
@@ -111,8 +153,6 @@
     border-left: 11px solid rgba(255,255,255,0.96);
     border-right: none;
   }
-
-  /* Right paddle bubble: tail points left */
   .bubble.right .bubble-inner::after {
     bottom: auto; right: auto;
     top: 50%; left: -10px;
@@ -122,7 +162,6 @@
     border-right: 11px solid rgba(255,255,255,0.96);
     border-left: none;
   }
-
   @keyframes bubblePop {
     0%   { opacity: 0; transform: scale(0.4); }
     100% { opacity: 1; transform: scale(1); }
@@ -135,13 +174,24 @@
 </head>
 <body>
 <div id="wrap">
+  <div id="ui">
+    <button id="btn-human" class="active">Selber spielen</button>
+    <button id="btn-ai">AI vs AI</button>
+    <button id="btn-restart">Neustart</button>
+  </div>
+
+  <div id="mode-label">Modus: Mensch vs AI</div>
+
   <div id="scores">
     <span class="score-val" id="score-l">0</span>
     <span class="score-divider">—</span>
     <span class="score-val" id="score-r">0</span>
   </div>
+
   <canvas id="c" width="900" height="580"></canvas>
+
   <div id="speed-label">RALLY · <span id="speed-num">0</span></div>
+  <div id="controls-hint" class="visible">Steuerung: W / S  oder  ↑ / ↓</div>
 </div>
 
 <script>
@@ -152,50 +202,86 @@ const wrap = document.getElementById('wrap');
 
 const COL_L = '#00f5ff';
 const COL_R = '#ff3cac';
-
-const PAD_W = 10, PAD_H = 88, PAD_MARGIN = 38;
-const BALL_R = 8;
-const BASE_SPEED = 7;
-const MAX_SPEED = 20;
-const MAX_ANGLE = Math.PI * 0.38;
+const PAD_W = 12, PAD_H = 96, PAD_MARGIN = 38;
+const BALL_R = 9;
+const BASE_SPEED = 7.2;
+const MAX_SPEED = 22;
+const MAX_ANGLE = Math.PI * 0.40;
 
 let scores = { l: 0, r: 0 };
 let rally = 0;
 let scoring = false;
+let humanMode = true;          // true = Spieler steuert links
+let gameRunning = true;
 
 let ball = { x: W/2, y: H/2, vx: 0, vy: 0 };
 let padL = { y: H/2, vy: 0 };
 let padR = { y: H/2, vy: 0 };
 let offsetL = 0, offsetR = 0;
 
-const TRAIL_LEN = 30;
+const TRAIL_LEN = 32;
 let trail = [];
 let particles = [];
+
+// ── Keyboard ──
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  // prevent page scroll
+  if (['ArrowUp','ArrowDown','KeyW','KeyS'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ── UI Buttons ──
+const btnHuman = document.getElementById('btn-human');
+const btnAI    = document.getElementById('btn-ai');
+const btnRestart = document.getElementById('btn-restart');
+const modeLabel = document.getElementById('mode-label');
+const controlsHint = document.getElementById('controls-hint');
+
+btnHuman.addEventListener('click', () => {
+  humanMode = true;
+  btnHuman.classList.add('active');
+  btnAI.classList.remove('active');
+  modeLabel.textContent = 'Modus: Mensch vs AI';
+  controlsHint.classList.add('visible');
+  resetBall(Math.random() > 0.5 ? 1 : -1);
+});
+
+btnAI.addEventListener('click', () => {
+  humanMode = false;
+  btnAI.classList.add('active');
+  btnHuman.classList.remove('active');
+  modeLabel.textContent = 'Modus: AI vs AI';
+  controlsHint.classList.remove('visible');
+  resetBall(Math.random() > 0.5 ? 1 : -1);
+});
+
+btnRestart.addEventListener('click', () => {
+  scores = { l: 0, r: 0 };
+  document.getElementById('score-l').textContent = '0';
+  document.getElementById('score-r').textContent = '0';
+  resetBall(Math.random() > 0.5 ? 1 : -1);
+});
 
 // ── Speech bubbles ──
 const happyEmojis = ['😄','🎉','😎','🥳','😁','✨','🔥','💪'];
 const sadEmojis   = ['😢','😭','😩','💀','😬','🥲','😔','😫'];
-
 function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
 let activeBubbles = [];
 
 function showBubble(side, isWinner) {
-  // Remove any existing bubble for this side
   activeBubbles = activeBubbles.filter(b => {
     if (b.side === side) { b.el.remove(); return false; }
     return true;
   });
-
   const el = document.createElement('div');
   el.className = `bubble ${side}`;
-
   const inner = document.createElement('div');
   inner.className = 'bubble-inner';
   inner.textContent = isWinner ? rand(happyEmojis) : rand(sadEmojis);
   el.appendChild(inner);
 
-  // Position: next to the paddle
   const lx = PAD_MARGIN + PAD_W/2;
   const rx = W - PAD_MARGIN - PAD_W/2;
   const padY = side === 'left' ? padL.y : padR.y;
@@ -206,13 +292,10 @@ function showBubble(side, isWinner) {
     el.style.right = (W - (rx - PAD_W/2 - 14) - 60) + 'px';
   }
   el.style.top = Math.max(10, Math.min(H - 70, padY - 28)) + 'px';
-
   wrap.appendChild(el);
-
   const entry = { side, el };
   activeBubbles.push(entry);
 
-  // Fade out after 1.8s
   setTimeout(() => {
     el.classList.add('fade-out');
     setTimeout(() => {
@@ -227,65 +310,85 @@ function resetBall(dir) {
   scoring = false;
   ball.x = W / 2;
   ball.y = 120 + Math.random() * (H - 240);
-  const angle = (Math.random() > 0.5 ? 1 : -1) * (0.35 + Math.random() * MAX_ANGLE * 0.7);
+  const angle = (Math.random() > 0.5 ? 1 : -1) * (0.28 + Math.random() * MAX_ANGLE * 0.65);
   const spd = BASE_SPEED;
   ball.vx = dir * spd * Math.cos(angle);
   ball.vy = spd * Math.sin(angle);
   trail = [];
   rally = 0;
-  // Fair random offsets — both sides get equal chance to miss
-  // Key fix: make offsets large enough that neither side always wins
-  offsetL = (Math.random() - 0.5) * PAD_H * 0.9;
-  offsetR = (Math.random() - 0.5) * PAD_H * 0.9;
+  offsetL = (Math.random() - 0.5) * PAD_H * 0.85;
+  offsetR = (Math.random() - 0.5) * PAD_H * 0.85;
   document.getElementById('speed-num').textContent = '0';
 }
 
-// ── AI ──
+// ── AI (nur für rechte Seite oder beide) ──
 function moveAI(pad, ballY, offset, dt) {
   const target = Math.max(PAD_H/2, Math.min(H - PAD_H/2, ballY + offset));
   const diff = target - pad.y;
-  // Speed deliberately slow and equal for both sides
-  const speed = 4.8 + rally * 0.12;
-  pad.vy = diff * 0.11 * speed;
+  const speed = 5.1 + rally * 0.13;
+  pad.vy = diff * 0.105 * speed;
   pad.vy = Math.max(-speed, Math.min(speed, pad.vy));
   pad.y += pad.vy * dt * 60;
   pad.y = Math.max(PAD_H/2, Math.min(H - PAD_H/2, pad.y));
 }
 
-// ── Particles ──
-function spawnParticles(x, y, color) {
-  for (let i = 0; i < 18; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const spd = 2 + Math.random() * 5;
-    particles.push({ x, y, vx: Math.cos(a)*spd, vy: Math.sin(a)*spd,
-      life: 1, decay: 0.025 + Math.random()*0.035, size: 1.5 + Math.random()*2.5, color });
-  }
+// ── Human control (links) ──
+function moveHuman(pad, dt) {
+  const speed = 9.5;
+  let dir = 0;
+  if (keys['KeyW'] || keys['ArrowUp'])   dir = -1;
+  if (keys['KeyS'] || keys['ArrowDown']) dir =  1;
+  pad.y += dir * speed * dt * 60;
+  pad.y = Math.max(PAD_H/2, Math.min(H - PAD_H/2, pad.y));
 }
 
+// ── Particles ──
+function spawnParticles(x, y, color) {
+  for (let i = 0; i < 20; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const spd = 2.2 + Math.random() * 5.5;
+    particles.push({
+      x, y,
+      vx: Math.cos(a)*spd, vy: Math.sin(a)*spd,
+      life: 1, decay: 0.022 + Math.random()*0.032,
+      size: 1.6 + Math.random()*2.8, color
+    });
+  }
+}
 function updateParticles(dt) {
   particles = particles.filter(p => p.life > 0);
   for (const p of particles) {
-    p.x += p.vx * dt * 60; p.y += p.vy * dt * 60;
-    p.vx *= 0.93; p.vy *= 0.93; p.life -= p.decay;
+    p.x += p.vx * dt * 60;
+    p.y += p.vy * dt * 60;
+    p.vx *= 0.93; p.vy *= 0.93;
+    p.life -= p.decay;
   }
 }
-
 function drawParticles() {
   for (const p of particles) {
-    ctx.save(); ctx.globalAlpha = p.life * p.life;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-    ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 8;
-    ctx.fill(); ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = p.life * p.life;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.restore();
   }
 }
 
 function drawPaddle(x, y, color) {
   ctx.save();
-  ctx.shadowColor = color; ctx.shadowBlur = 32;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 34;
   ctx.fillStyle = color;
-  rrect(x - PAD_W/2, y - PAD_H/2, PAD_W, PAD_H, 5); ctx.fill();
-  ctx.shadowBlur = 8; ctx.fillStyle = '#fff';
-  rrect(x - PAD_W/2 + 2, y - PAD_H/2 + 2, PAD_W-4, PAD_H-4, 3); ctx.fill();
+  rrect(x - PAD_W/2, y - PAD_H/2, PAD_W, PAD_H, 6);
+  ctx.fill();
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = '#fff';
+  rrect(x - PAD_W/2 + 2.5, y - PAD_H/2 + 2.5, PAD_W-5, PAD_H-5, 4);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -301,17 +404,34 @@ function drawBall() {
   for (let i = 0; i < trail.length; i++) {
     const t = i / trail.length;
     const col = ball.vx > 0 ? COL_L : COL_R;
-    ctx.save(); ctx.globalAlpha = t * t * 0.5;
-    ctx.beginPath(); ctx.arc(trail[i].x, trail[i].y, BALL_R*(0.3+t*0.7), 0, Math.PI*2);
-    ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.fill(); ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = t * t * 0.5;
+    ctx.beginPath();
+    ctx.arc(trail[i].x, trail[i].y, BALL_R*(0.3+t*0.7), 0, Math.PI*2);
+    ctx.fillStyle = col;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.restore();
   }
   const col = ball.vx > 0 ? COL_R : COL_L;
-  ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = 40;
-  ctx.beginPath(); ctx.arc(ball.x, ball.y, BALL_R*1.9, 0, Math.PI*2);
-  ctx.fillStyle = col+'33'; ctx.fill(); ctx.restore();
-  ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = 18;
-  ctx.beginPath(); ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI*2);
-  ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();
+  ctx.save();
+  ctx.shadowColor = col;
+  ctx.shadowBlur = 42;
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, BALL_R*1.9, 0, Math.PI*2);
+  ctx.fillStyle = col+'33';
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.shadowColor = col;
+  ctx.shadowBlur = 18;
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI*2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.restore();
 }
 
 function flashScore(side) {
@@ -322,7 +442,6 @@ function flashScore(side) {
 
 // ── Main loop ──
 let lastTs = null;
-
 function tick(ts) {
   if (!lastTs) lastTs = ts;
   const dt = Math.min((ts - lastTs) / 1000, 0.05);
@@ -331,11 +450,18 @@ function tick(ts) {
   const lx = PAD_MARGIN + PAD_W/2;
   const rx = W - PAD_MARGIN - PAD_W/2;
 
-  if (ball.vx < 0) moveAI(padL, ball.y, offsetL, dt);
-  else padL.y += (H/2 - padL.y) * 0.03;
+  // ── Paddle movement ──
+  if (humanMode) {
+    moveHuman(padL, dt);
+  } else {
+    // AI left only when ball comes toward it
+    if (ball.vx < 0) moveAI(padL, ball.y, offsetL, dt);
+    else padL.y += (H/2 - padL.y) * 0.028;
+  }
 
+  // Right paddle always AI
   if (ball.vx > 0) moveAI(padR, ball.y, offsetR, dt);
-  else padR.y += (H/2 - padR.y) * 0.03;
+  else padR.y += (H/2 - padR.y) * 0.028;
 
   padL.y = Math.max(PAD_H/2, Math.min(H-PAD_H/2, padL.y));
   padR.y = Math.max(PAD_H/2, Math.min(H-PAD_H/2, padR.y));
@@ -347,12 +473,15 @@ function tick(ts) {
     ball.x += ball.vx * dt * 60;
     ball.y += ball.vy * dt * 60;
 
+    // Walls
     if (ball.y - BALL_R < 0) {
-      ball.y = BALL_R; ball.vy = Math.abs(ball.vy);
+      ball.y = BALL_R;
+      ball.vy = Math.abs(ball.vy);
       spawnParticles(ball.x, 0, '#ffffff55');
     }
     if (ball.y + BALL_R > H) {
-      ball.y = H - BALL_R; ball.vy = -Math.abs(ball.vy);
+      ball.y = H - BALL_R;
+      ball.vy = -Math.abs(ball.vy);
       spawnParticles(ball.x, H, '#ffffff55');
     }
 
@@ -367,11 +496,11 @@ function tick(ts) {
       const hitPos = Math.max(-1, Math.min(1, (ball.y - padL.y) / (PAD_H/2)));
       const angle = hitPos * MAX_ANGLE;
       rally++;
-      const spd = Math.min(BASE_SPEED + rally * 0.25, MAX_SPEED);
+      const spd = Math.min(BASE_SPEED + rally * 0.28, MAX_SPEED);
       ball.vx = Math.abs(spd * Math.cos(angle));
       ball.vy = spd * Math.sin(angle);
       spawnParticles(ball.x, ball.y, COL_L);
-      offsetR = (Math.random() - 0.5) * PAD_H * 0.9;
+      offsetR = (Math.random() - 0.5) * PAD_H * 0.85;
       document.getElementById('speed-num').textContent = rally;
     }
 
@@ -386,51 +515,60 @@ function tick(ts) {
       const hitPos = Math.max(-1, Math.min(1, (ball.y - padR.y) / (PAD_H/2)));
       const angle = hitPos * MAX_ANGLE;
       rally++;
-      const spd = Math.min(BASE_SPEED + rally * 0.25, MAX_SPEED);
+      const spd = Math.min(BASE_SPEED + rally * 0.28, MAX_SPEED);
       ball.vx = -Math.abs(spd * Math.cos(angle));
       ball.vy = spd * Math.sin(angle);
       spawnParticles(ball.x, ball.y, COL_R);
-      offsetL = (Math.random() - 0.5) * PAD_H * 0.9;
+      offsetL = (Math.random() - 0.5) * PAD_H * 0.85;
       document.getElementById('speed-num').textContent = rally;
     }
 
-    // Score — ball exits LEFT → right paddle scores, left loses
+    // Score left side
     if (ball.x < -BALL_R * 2) {
       scoring = true;
       scores.r++;
       document.getElementById('score-r').textContent = scores.r;
       flashScore('r');
       spawnParticles(0, ball.y, COL_R);
-      // Left missed → sad; right scored → happy
-      showBubble('left',  false); // loser
-      showBubble('right', true);  // winner
+      showBubble('left',  false);
+      showBubble('right', true);
       setTimeout(() => resetBall(1), 1100);
     }
-
-    // Score — ball exits RIGHT → left paddle scores, right loses
+    // Score right side
     if (ball.x > W + BALL_R * 2) {
       scoring = true;
       scores.l++;
       document.getElementById('score-l').textContent = scores.l;
       flashScore('l');
       spawnParticles(W, ball.y, COL_L);
-      // Right missed → sad; left scored → happy
-      showBubble('right', false); // loser
-      showBubble('left',  true);  // winner
+      showBubble('right', false);
+      showBubble('left',  true);
       setTimeout(() => resetBall(-1), 1100);
     }
   }
 
   updateParticles(dt);
 
+  // ── Draw ──
   ctx.clearRect(0, 0, W, H);
-  const vig = ctx.createRadialGradient(W/2, H/2, H*0.2, W/2, H/2, H*0.85);
-  vig.addColorStop(0, 'rgba(5,5,8,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.65)');
-  ctx.fillStyle = vig; ctx.fillRect(0,0,W,H);
 
-  ctx.save(); ctx.setLineDash([10,18]);
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.stroke(); ctx.restore();
+  // Vignette
+  const vig = ctx.createRadialGradient(W/2, H/2, H*0.2, W/2, H/2, H*0.85);
+  vig.addColorStop(0, 'rgba(5,5,8,0)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.65)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0,0,W,H);
+
+  // Center line
+  ctx.save();
+  ctx.setLineDash([10,18]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(W/2,0);
+  ctx.lineTo(W/2,H);
+  ctx.stroke();
+  ctx.restore();
 
   drawParticles();
   drawBall();
@@ -440,6 +578,7 @@ function tick(ts) {
   requestAnimationFrame(tick);
 }
 
+// Start
 resetBall(Math.random() > 0.5 ? 1 : -1);
 requestAnimationFrame(tick);
 </script>
